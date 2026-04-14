@@ -5,9 +5,13 @@
  * and routes incoming messages by type.
  */
 
+const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+
 const WS_BASE_URL =
   import.meta.env.VITE_WS_URL ||
-  `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`;
+  (isLocal
+    ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`
+    : "wss://tunnel-transfer-backend.vercel.app/ws");
 
 export function createWebSocket(clientId) {
   const url = `${WS_BASE_URL}/${clientId}`;
