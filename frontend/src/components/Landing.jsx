@@ -24,41 +24,33 @@ export default function Landing({ onCreateRoom, onJoinRoom, isConnecting }) {
     <div className="landing">
       <div className="landing__brand">
         <svg
-          className="landing__icon"
-          viewBox="0 0 64 64"
+          className="landing__logo"
+          viewBox="0 0 48 48"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <defs>
-            <linearGradient id="iconGrad" x1="0" y1="0" x2="64" y2="64">
-              <stop offset="0%" stopColor="#6c63ff" />
-              <stop offset="100%" stopColor="#00d4aa" />
-            </linearGradient>
-          </defs>
-          <rect x="4" y="4" width="56" height="56" rx="16" stroke="url(#iconGrad)" strokeWidth="3" fill="none" />
+          <rect x="2" y="2" width="44" height="44" rx="12" stroke="#4f46e5" strokeWidth="2.5" fill="none" />
           <path
-            d="M22 32h20M36 24l8 8-8 8"
-            stroke="url(#iconGrad)"
-            strokeWidth="3"
+            d="M16 24h16M27 18l6 6-6 6"
+            stroke="#4f46e5"
+            strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          <circle cx="16" cy="32" r="3" fill="#6c63ff" />
-          <circle cx="48" cy="32" r="3" fill="#00d4aa" />
         </svg>
         <h1 className="landing__title">TunnelTransfer</h1>
         <p className="landing__subtitle">
-          Peer-to-peer file transfer. No servers, no limits, no traces.
+          Peer-to-peer file transfer. No uploads, no limits.
         </p>
       </div>
 
       <div className="landing__actions">
         {/* Create Room Card */}
         <div className="action-card">
-          <div className="action-card__icon">🚀</div>
+          <div className="action-card__icon">🔒</div>
           <h2 className="action-card__title">Create Room</h2>
           <p className="action-card__desc">
-            Generate a private room code and share&nbsp;it with your peer to begin.
+            Generate a private room code and share it with your peer.
           </p>
           <button
             id="btn-create-room"
@@ -75,7 +67,7 @@ export default function Landing({ onCreateRoom, onJoinRoom, isConnecting }) {
           <div className="action-card__icon">🔗</div>
           <h2 className="action-card__title">Join Room</h2>
           <p className="action-card__desc">
-            Enter the 6-character code shared by the room creator to connect.
+            Enter the room code shared by the creator to connect.
           </p>
           <input
             id="input-room-code"
@@ -89,7 +81,6 @@ export default function Landing({ onCreateRoom, onJoinRoom, isConnecting }) {
             onKeyDown={handleKeyDown}
             disabled={isConnecting}
           />
-          <div style={{ height: "0.75rem" }} />
           <button
             id="btn-join-room"
             className={`btn btn--primary ${

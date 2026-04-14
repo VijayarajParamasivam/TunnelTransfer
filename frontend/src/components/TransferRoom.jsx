@@ -6,17 +6,17 @@ import ProgressBar from "./ProgressBar";
  */
 export default function TransferRoom({
   roomId,
-  status,      // "waiting" | "connected" | "incoming" | "transferring" | "complete" | "error"
-  role,        // "sender" | "receiver" | null
-  progress,    // { percent, bytesSent/bytesReceived, totalBytes, filename }
+  status,
+  role,
+  progress,
   onFileSelect,
   onSendFile,
   selectedFile,
   onLeave,
   errorMessage,
-  incomingFile,  // { filename, fileSize } — when a file is offered
-  onAcceptFile,  // called from user click → triggers showSaveFilePicker
-  onTransferAnother, // reset to connected state for another transfer
+  incomingFile,
+  onAcceptFile,
+  onTransferAnother,
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -28,7 +28,6 @@ export default function TransferRoom({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback
       const el = document.createElement("textarea");
       el.value = roomId;
       document.body.appendChild(el);
@@ -44,16 +43,13 @@ export default function TransferRoom({
     e.preventDefault();
     setIsDragOver(true);
   };
-
   const handleDragLeave = () => setIsDragOver(false);
-
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragOver(false);
     const file = e.dataTransfer.files[0];
     if (file) onFileSelect(file);
   };
-
   const handleFileInput = (e) => {
     const file = e.target.files[0];
     if (file) onFileSelect(file);
@@ -61,43 +57,38 @@ export default function TransferRoom({
 
   const statusLabels = {
     waiting: "Waiting for peer to join…",
-    connected: "Peer connected! Ready to transfer.",
-    incoming: "Incoming file!",
-    transferring: role === "sender" ? "Sending file…" : "Receiving file…",
-    complete: "Transfer complete!",
-    error: errorMessage || "Connection error.",
+    connected: "Ready to transfer",
+    incoming: "Incoming file",
+    transferring: role === "sender" ? "Sending…" : "Receiving…",
+    complete: "Transfer complete",
+    error: errorMessage || "Connection error",
   };
-
-  const statusDotClass = `status-dot status-dot--${status}`;
 
   return (
     <div className="transfer-room">
-      {/* Back Button */}
+      {/* Back */}
       <div className="transfer-room__back">
         <button className="btn btn--secondary" onClick={onLeave} id="btn-leave-room">
-          ← Leave
+          ← Leave Room
         </button>
       </div>
 
       {/* Header */}
       <div className="transfer-room__header">
-        {/* Room Code */}
         <div className="room-code" onClick={handleCopyCode} title="Click to copy" id="room-code-display">
           <div>
             <div className="room-code__label">Room Code</div>
             <div className="room-code__value">{roomId}</div>
           </div>
-          <span className="room-code__copy">{copied ? "✓" : "📋"}</span>
+          <span className="room-code__copy">{copied ? "✓" : "⎘"}</span>
         </div>
-
-        {/* Status */}
         <div className="status-indicator">
-          <span className={statusDotClass} />
+          <span className={`status-dot status-dot--${status}`} />
           <span>{statusLabels[status]}</span>
         </div>
       </div>
 
-      {/* ── Waiting State ────────────────────────────────────────────── */}
+      {/* ── Waiting ──────────────────────────────────────────────────────── */}
       {status === "waiting" && (
         <div className="waiting-card">
           <div className="waiting-card__spinner" />
@@ -105,12 +96,12 @@ export default function TransferRoom({
             Share the room code with your peer
           </div>
           <div className="waiting-card__subtext">
-            They can paste it in the "Join Room" field to connect
+            They'll enter it in the "Join Room" field to connect
           </div>
         </div>
       )}
 
-      {/* ── Connected: Show drop zone for sender ─────────────────────── */}
+      {/* ── Connected: Drop zone ─────────────────────────────────────────── */}
       {status === "connected" && (
         <>
           <div
@@ -121,12 +112,18 @@ export default function TransferRoom({
             onClick={() => fileInputRef.current?.click()}
             id="drop-zone"
           >
-            <div className="drop-zone__icon">📁</div>
+            <div className="drop-zone__icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </div>
             <div className="drop-zone__text">
-              Drag & drop a file here, or <strong>browse</strong>
+              Drop a file here, or <strong>browse</strong>
             </div>
             <div className="drop-zone__hint">
-              File is sent directly to your peer — never uploaded to a server
+              Sent directly to your peer — never uploaded to a server
             </div>
             <input
               ref={fileInputRef}
@@ -138,36 +135,35 @@ export default function TransferRoom({
           </div>
 
           {selectedFile && (
-            <>
-              <div className="file-info">
-                <div className="file-info__icon">📄</div>
-                <div className="file-info__details">
-                  <div className="file-info__name">{selectedFile.name}</div>
-                  <div className="file-info__size">
-                    {formatBytes(selectedFile.size)}
-                  </div>
-                </div>
-                <button
-                  className="btn btn--success"
-                  onClick={() => onSendFile(selectedFile)}
-                  id="btn-send-file"
-                >
-                  Send File 🚀
-                </button>
+            <div className="file-info">
+              <div className="file-info__icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5f6368" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
               </div>
-            </>
+              <div className="file-info__details">
+                <div className="file-info__name">{selectedFile.name}</div>
+                <div className="file-info__size">{formatBytes(selectedFile.size)}</div>
+              </div>
+              <button
+                className="btn btn--primary"
+                onClick={() => onSendFile(selectedFile)}
+                id="btn-send-file"
+              >
+                Send
+              </button>
+            </div>
           )}
         </>
       )}
 
-      {/* ── Incoming File: Accept prompt ──────────────────────────────── */}
+      {/* ── Incoming File ────────────────────────────────────────────────── */}
       {status === "incoming" && incomingFile && (
-        <div className="complete-card" style={{ borderColor: "rgba(108,99,255,0.3)" }}>
-          <div className="complete-card__check" style={{ background: "var(--gradient-button)" }}>
-            📥
-          </div>
-          <h2 className="complete-card__title">Incoming File</h2>
-          <p className="complete-card__detail">
+        <div className="result-card">
+          <div className="result-card__icon result-card__icon--incoming">↓</div>
+          <h2 className="result-card__title">Incoming File</h2>
+          <p className="result-card__detail">
             {incomingFile.filename} — {formatBytes(incomingFile.fileSize)}
           </p>
           <button
@@ -175,12 +171,12 @@ export default function TransferRoom({
             onClick={onAcceptFile}
             id="btn-accept-file"
           >
-            Accept & Save 💾
+            Accept & Save
           </button>
         </div>
       )}
 
-      {/* ── Transferring ─────────────────────────────────────────────── */}
+      {/* ── Transferring ─────────────────────────────────────────────────── */}
       {status === "transferring" && progress && (
         <ProgressBar
           percent={progress.percent}
@@ -190,12 +186,12 @@ export default function TransferRoom({
         />
       )}
 
-      {/* ── Complete ─────────────────────────────────────────────────── */}
+      {/* ── Complete ─────────────────────────────────────────────────────── */}
       {status === "complete" && (
-        <div className="complete-card">
-          <div className="complete-card__check">✓</div>
-          <h2 className="complete-card__title">Transfer Complete!</h2>
-          <p className="complete-card__detail">
+        <div className="result-card">
+          <div className="result-card__icon result-card__icon--success">✓</div>
+          <h2 className="result-card__title">Transfer Complete</h2>
+          <p className="result-card__detail">
             {progress?.filename} — {formatBytes(progress?.totalBytes || 0)}
           </p>
           <button className="btn btn--primary" onClick={onTransferAnother} id="btn-done">
@@ -204,14 +200,12 @@ export default function TransferRoom({
         </div>
       )}
 
-      {/* ── Error ────────────────────────────────────────────────────── */}
+      {/* ── Error ────────────────────────────────────────────────────────── */}
       {status === "error" && (
-        <div className="complete-card" style={{ borderColor: "rgba(255,77,106,0.3)" }}>
-          <div className="complete-card__check" style={{ background: "linear-gradient(135deg, #ff4d6a, #ff6b81)" }}>
-            ✕
-          </div>
-          <h2 className="complete-card__title">Connection Lost</h2>
-          <p className="complete-card__detail">{errorMessage}</p>
+        <div className="result-card">
+          <div className="result-card__icon result-card__icon--error">✕</div>
+          <h2 className="result-card__title">Connection Lost</h2>
+          <p className="result-card__detail">{errorMessage}</p>
           <button className="btn btn--primary" onClick={onLeave} id="btn-retry">
             Back to Home
           </button>

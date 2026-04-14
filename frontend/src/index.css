@@ -1,1 +1,5 @@
-/* index.css is intentionally left minimal — all styles live in App.css */
+/* Global reset — everything else is in App.css */
+body {
+  margin: 0;
+  padding: 0;
+}
