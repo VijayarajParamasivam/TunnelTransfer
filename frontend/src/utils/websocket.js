@@ -11,7 +11,7 @@ const WS_BASE_URL =
   import.meta.env.VITE_WS_URL ||
   (isLocal
     ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`
-    : "wss://tunnel-transfer-backend.vercel.app/ws");
+    : "wss://tunneltransfer.onrender.com/ws");
 
 export function createWebSocket(clientId) {
   const url = `${WS_BASE_URL}/${clientId}`;
