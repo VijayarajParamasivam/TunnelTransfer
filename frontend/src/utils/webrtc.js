@@ -5,37 +5,7 @@
  * and SDP / ICE signaling through the WebSocket relay.
  */
 
-const turnUsername = import.meta.env.VITE_TURN_USERNAME;
-const turnCredential = import.meta.env.VITE_TURN_CREDENTIAL;
-
-const ICE_SERVERS = [
-  { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun.relay.metered.ca:80" },
-  ...(turnUsername && turnCredential
-    ? [
-        {
-          urls: "turn:a.relay.metered.ca:80",
-          username: turnUsername,
-          credential: turnCredential,
-        },
-        {
-          urls: "turn:a.relay.metered.ca:80?transport=tcp",
-          username: turnUsername,
-          credential: turnCredential,
-        },
-        {
-          urls: "turn:a.relay.metered.ca:443",
-          username: turnUsername,
-          credential: turnCredential,
-        },
-        {
-          urls: "turns:a.relay.metered.ca:443?transport=tcp",
-          username: turnUsername,
-          credential: turnCredential,
-        },
-      ]
-    : []),
-];
+const ICE_SERVERS = [{ urls: "stun:stun.l.google.com:19302" }];
 
 /**
  * Create and manage a WebRTC peer connection.

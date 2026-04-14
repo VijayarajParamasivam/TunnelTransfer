@@ -43,7 +43,6 @@ export function sendFile(dataChannel, file, onProgress) {
 
       // ── Backpressure guard ──────────────────────────────────────────
       if (dataChannel.bufferedAmount > BUFFER_THRESHOLD) {
-        // Pause: wait for the buffer to drain
         dataChannel.onbufferedamountlow = () => {
           dataChannel.onbufferedamountlow = null;
           readAndSendChunk();
@@ -63,35 +62,34 @@ export function sendFile(dataChannel, file, onProgress) {
           const percent = Math.round((offset / totalBytes) * 100);
           onProgress?.({ bytesSent: offset, totalBytes, percent });
 
-          // Use setTimeout to avoid stack overflow on many chunks
-          // and to yield to the event loop
           setTimeout(readAndSendChunk, 0);
         } catch (err) {
+          cleanup();
           reject(err);
         }
       };
-      reader.onerror = () => reject(reader.error);
+      reader.onerror = () => { cleanup(); reject(reader.error); };
       reader.readAsArrayBuffer(slice);
     }
 
-    // Step 2: Wait for "ready" handshake from the receiver
-    // The receiver sends this after the user picks a save location
-    const prevOnMessage = dataChannel.onmessage;
-    dataChannel.onmessage = (event) => {
+    // Step 2: Listen for "ready" using addEventListener (doesn't override onmessage)
+    function onReadyMessage(event) {
       if (typeof event.data === "string") {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === "ready") {
             console.log("[Sender] Receiver ready, starting transfer…");
-            // Restore previous handler (if any) and start sending
-            dataChannel.onmessage = prevOnMessage;
+            cleanup();
             readAndSendChunk();
-            return;
           }
         } catch (_) {}
       }
-      // Forward non-ready messages to previous handler
-      if (prevOnMessage) prevOnMessage(event);
-    };
+    }
+
+    function cleanup() {
+      dataChannel.removeEventListener("message", onReadyMessage);
+    }
+
+    dataChannel.addEventListener("message", onReadyMessage);
   });
 }

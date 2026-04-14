@@ -77,35 +77,33 @@ export default function App() {
           setStatus("connected");
           showToast("success", "Peer connected! Data channel ready.");
 
-          // If not initiator, set up file receiver immediately
-          if (!isInitiator) {
-            const receiver = setupReceiver(
-              dataChannel,
-              // onIncomingFile — metadata arrived, show accept prompt
-              (fileInfo) => {
-                setIncomingFile(fileInfo);
-                setRole("receiver");
-                setStatus("incoming");
-              },
-              // onProgress
-              (prog) => {
-                setStatus("transferring");
-                setProgress(prog);
-              },
-              // onComplete
-              (info) => {
-                setStatus("complete");
-                setProgress((prev) => ({ ...prev, ...info }));
-                showToast("success", `Received ${info.filename} successfully!`);
-              },
-              // onError
-              (err) => {
-                console.error("[Receiver] Error:", err);
-                showToast("error", `Receive error: ${err.message}`);
-              }
-            );
-            receiverRef.current = receiver;
-          }
+          // Set up file receiver for BOTH sides so either can send/receive
+          const receiver = setupReceiver(
+            dataChannel,
+            // onIncomingFile — metadata arrived, show accept prompt
+            (fileInfo) => {
+              setIncomingFile(fileInfo);
+              setRole("receiver");
+              setStatus("incoming");
+            },
+            // onProgress
+            (prog) => {
+              setStatus("transferring");
+              setProgress(prog);
+            },
+            // onComplete
+            (info) => {
+              setStatus("complete");
+              setProgress((prev) => ({ ...prev, ...info }));
+              showToast("success", `Received ${info.filename} successfully!`);
+            },
+            // onError
+            (err) => {
+              console.error("[Receiver] Error:", err);
+              showToast("error", `Receive error: ${err.message}`);
+            }
+          );
+          receiverRef.current = receiver;
         },
         // onStatusChange
         (connState) => {
