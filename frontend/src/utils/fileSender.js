@@ -1,14 +1,14 @@
 /**
- * File Sender
+ * File Sender — High Performance
  *
- * Reads a file in 64KB chunks and sends over an RTCDataChannel.
- * Implements backpressure using bufferedAmount monitoring to avoid crashes.
- * Waits for a "ready" handshake from the receiver before sending chunks.
+ * Reads a file in 256KB chunks and sends over an RTCDataChannel.
+ * Uses a tight send loop with backpressure to maximize throughput.
+ * Waits for a "ready" handshake from the receiver before sending.
  */
 
-const CHUNK_SIZE = 64 * 1024; // 64 KB
-const BUFFER_HIGH = 2 * 1024 * 1024; // 2 MB — pause when buffer exceeds this
-const BUFFER_LOW = 512 * 1024; // 512 KB — resume when buffer drops below this
+const CHUNK_SIZE = 256 * 1024; // 256 KB — larger chunks = fewer round-trips
+const BUFFER_HIGH = 8 * 1024 * 1024; // 8 MB — pause threshold
+const BUFFER_LOW = 2 * 1024 * 1024; // 2 MB — resume threshold
 
 /**
  * Send a file over a WebRTC data channel with backpressure control.
@@ -32,64 +32,75 @@ export function sendFile(dataChannel, file, onProgress) {
     let offset = 0;
     const totalBytes = file.size;
 
-    // Set the low-water mark for the bufferedamountlow event
     dataChannel.bufferedAmountLowThreshold = BUFFER_LOW;
 
-    function sendNextChunk() {
-      while (offset < totalBytes) {
-        // ── Backpressure: pause if buffer is getting full ──────────────
-        if (dataChannel.bufferedAmount > BUFFER_HIGH) {
-          // Wait for buffer to drain before sending more
-          dataChannel.onbufferedamountlow = () => {
-            dataChannel.onbufferedamountlow = null;
-            sendNextChunk();
-          };
-          return; // Exit the loop, will resume from onbufferedamountlow
-        }
+    async function pumpChunks() {
+      try {
+        while (offset < totalBytes) {
+          // ── Backpressure: pause if buffer is filling up ──────────────
+          if (dataChannel.bufferedAmount > BUFFER_HIGH) {
+            await waitForDrain();
+            continue;
+          }
 
-        const end = Math.min(offset + CHUNK_SIZE, totalBytes);
-        const slice = file.slice(offset, end);
+          const end = Math.min(offset + CHUNK_SIZE, totalBytes);
+          const slice = file.slice(offset, end);
+          const buffer = await slice.arrayBuffer();
 
-        // Read the slice synchronously-ish using a FileReaderSync workaround:
-        // Actually, use the blob.arrayBuffer() API which returns a promise
-        // But we need to stay in a sync loop for backpressure to work.
-        // Use slice + FileReader for each chunk.
-        const reader = new FileReader();
-        reader.onload = (e) => {
           try {
-            dataChannel.send(e.target.result);
-            offset = end;
-
-            const percent = Math.round((offset / totalBytes) * 100);
-            onProgress?.({ bytesSent: offset, totalBytes, percent });
-
-            if (offset >= totalBytes) {
-              resolve();
-              return;
-            }
-
-            // Continue sending — use setTimeout to yield to event loop
-            // This gives the buffer time to drain and events to process
-            setTimeout(sendNextChunk, 0);
+            dataChannel.send(buffer);
           } catch (err) {
-            // If send fails (queue full), wait and retry
-            if (err.message && err.message.includes("send queue is full")) {
-              console.warn("[Sender] Queue full, pausing…");
-              offset = end - (end - (offset)); // don't advance offset
-              dataChannel.onbufferedamountlow = () => {
-                dataChannel.onbufferedamountlow = null;
-                sendNextChunk();
-              };
+            if (err.message?.includes("send queue is full")) {
+              console.warn("[Sender] Queue full, waiting for drain…");
+              await waitForDrain();
+              dataChannel.send(buffer); // retry once after drain
             } else {
-              cleanupListener();
-              reject(err);
+              throw err;
             }
           }
-        };
-        reader.onerror = () => { cleanupListener(); reject(reader.error); };
-        reader.readAsArrayBuffer(slice);
-        return; // FileReader is async, so exit loop — onload will continue
+
+          offset = end;
+
+          // Report progress every ~1MB to avoid UI thrashing
+          if (offset % (1024 * 1024) < CHUNK_SIZE || offset >= totalBytes) {
+            const percent = Math.round((offset / totalBytes) * 100);
+            onProgress?.({ bytesSent: offset, totalBytes, percent });
+          }
+        }
+
+        onProgress?.({ bytesSent: totalBytes, totalBytes, percent: 100 });
+        resolve();
+      } catch (err) {
+        cleanupListener();
+        reject(err);
       }
+    }
+
+    function waitForDrain() {
+      return new Promise((res) => {
+        // First try: bufferedamountlow event
+        const timeout = setTimeout(() => {
+          // Fallback: if event doesn't fire in 2s, check manually
+          dataChannel.onbufferedamountlow = null;
+          if (dataChannel.bufferedAmount <= BUFFER_LOW) {
+            res();
+          } else {
+            // Poll every 100ms as last resort
+            const poll = setInterval(() => {
+              if (dataChannel.bufferedAmount <= BUFFER_LOW) {
+                clearInterval(poll);
+                res();
+              }
+            }, 100);
+          }
+        }, 2000);
+
+        dataChannel.onbufferedamountlow = () => {
+          clearTimeout(timeout);
+          dataChannel.onbufferedamountlow = null;
+          res();
+        };
+      });
     }
 
     // Step 2: Listen for "ready" handshake from receiver
@@ -100,7 +111,7 @@ export function sendFile(dataChannel, file, onProgress) {
           if (msg.type === "ready") {
             console.log("[Sender] Receiver ready, starting transfer…");
             cleanupListener();
-            sendNextChunk();
+            pumpChunks();
           }
         } catch (_) {}
       }
