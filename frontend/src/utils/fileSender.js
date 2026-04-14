@@ -27,6 +27,7 @@ export function sendFile(dataChannel, file, onProgress) {
       fileSize: file.size,
     });
     dataChannel.send(metadata);
+    console.log("[Sender] Metadata sent:", file.name, file.size, "bytes. Waiting for receiver…");
 
     let offset = 0;
     const totalBytes = file.size;

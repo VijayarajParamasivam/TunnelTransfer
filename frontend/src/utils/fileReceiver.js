@@ -27,48 +27,62 @@ export function setupReceiver(dataChannel, onIncomingFile, onProgress, onComplet
   let filename = "";
   let streamReady = false;
 
-  dataChannel.onmessage = async (event) => {
+  function handleMessage(event) {
     try {
       // ── Metadata message (JSON string) ──────────────────────────────
       if (typeof event.data === "string") {
-        const meta = JSON.parse(event.data);
-        if (meta.type === "metadata") {
-          filename = meta.filename;
-          totalBytes = meta.fileSize;
-          bytesReceived = 0;
+        let parsed;
+        try { parsed = JSON.parse(event.data); } catch { return; }
 
+        if (parsed.type === "metadata") {
+          filename = parsed.filename;
+          totalBytes = parsed.fileSize;
+          bytesReceived = 0;
+          streamReady = false;
+
+          console.log("[Receiver] Got metadata:", filename, totalBytes, "bytes");
           // Notify the app — UI will show an "Accept" button
           onIncomingFile?.({ filename, fileSize: totalBytes });
         }
+        // Ignore other string messages (e.g. "ready" from sender side)
         return;
       }
 
       // ── Binary chunk (ArrayBuffer) ──────────────────────────────────
       if (event.data instanceof ArrayBuffer && writableStream && streamReady) {
-        await writableStream.write(event.data);
-        bytesReceived += event.data.byteLength;
+        writableStream.write(event.data).then(() => {
+          bytesReceived += event.data.byteLength;
 
-        const percent = Math.round((bytesReceived / totalBytes) * 100);
-        onProgress?.({ bytesReceived, totalBytes, percent, filename });
+          const percent = Math.round((bytesReceived / totalBytes) * 100);
+          onProgress?.({ bytesReceived, totalBytes, percent, filename });
 
-        // Transfer complete
-        if (bytesReceived >= totalBytes) {
-          await writableStream.close();
-          writableStream = null;
-          streamReady = false;
-          onComplete?.({ filename, fileSize: totalBytes });
-        }
+          // Transfer complete
+          if (bytesReceived >= totalBytes) {
+            writableStream.close().then(() => {
+              writableStream = null;
+              streamReady = false;
+              onComplete?.({ filename, fileSize: totalBytes });
+            });
+          }
+        }).catch((err) => {
+          console.error("[Receiver] Write error:", err);
+          onError?.(err);
+        });
       }
     } catch (err) {
       console.error("[Receiver] Error:", err);
       if (writableStream) {
-        try { await writableStream.abort(); } catch (_) {}
+        try { writableStream.abort(); } catch (_) {}
         writableStream = null;
         streamReady = false;
       }
       onError?.(err);
     }
-  };
+  }
+
+  // Use addEventListener so it doesn't conflict with other handlers
+  dataChannel.addEventListener("message", handleMessage);
+  console.log("[Receiver] Setup complete, listening for metadata");
 
   /**
    * Must be called from a user gesture (click handler).
@@ -76,6 +90,7 @@ export function setupReceiver(dataChannel, onIncomingFile, onProgress, onComplet
    */
   async function acceptFile() {
     try {
+      console.log("[Receiver] User clicked Accept, opening file picker...");
       const fileHandle = await window.showSaveFilePicker({
         suggestedName: filename,
       });
