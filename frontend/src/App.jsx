@@ -252,6 +252,16 @@ export default function App() {
     [showToast]
   );
 
+  // ── Transfer Another (stay in room) ─────────────────────────────────
+  const handleTransferAnother = useCallback(() => {
+    setStatus("connected");
+    setRole(null);
+    setSelectedFile(null);
+    setProgress(null);
+    setIncomingFile(null);
+    setErrorMessage("");
+  }, []);
+
   // ── Leave Room ──────────────────────────────────────────────────────
   const handleLeave = useCallback(() => {
     cleanupAll();
@@ -290,6 +300,7 @@ export default function App() {
           errorMessage={errorMessage}
           incomingFile={incomingFile}
           onAcceptFile={handleAcceptFile}
+          onTransferAnother={handleTransferAnother}
         />
       )}
 

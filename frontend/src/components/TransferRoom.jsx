@@ -16,6 +16,7 @@ export default function TransferRoom({
   errorMessage,
   incomingFile,  // { filename, fileSize } — when a file is offered
   onAcceptFile,  // called from user click → triggers showSaveFilePicker
+  onTransferAnother, // reset to connected state for another transfer
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -197,8 +198,8 @@ export default function TransferRoom({
           <p className="complete-card__detail">
             {progress?.filename} — {formatBytes(progress?.totalBytes || 0)}
           </p>
-          <button className="btn btn--primary" onClick={onLeave} id="btn-done">
-            Done
+          <button className="btn btn--primary" onClick={onTransferAnother} id="btn-done">
+            Transfer Another File
           </button>
         </div>
       )}
